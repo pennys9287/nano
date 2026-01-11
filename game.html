@@ -67,6 +67,7 @@
         let distance = 0;
         let lastPlatform = { x: 0, y: groundY - 30, width: 300, height: 15 };
         let gameOver = false;
+        let lastGroundEnemyX = 400;
 
         const platforms = [
             { x: 300, y: 280, width: 120, height: 15, color: '#8B4513' },
@@ -82,12 +83,38 @@
             space: false
         };
 
+        function restartGame() {
+            gameOver = false;
+            cameraX = 0;
+            distance = 0;
+            player.x = 150;
+            player.y = 250;
+            player.velocityX = 0;
+            player.velocityY = 0;
+            player.isJumping = false;
+
+            platforms.length = 0;
+            platforms.push(
+                { x: 300, y: 280, width: 120, height: 15, color: '#8B4513' },
+                { x: 500, y: 250, width: 100, height: 15, color: '#8B4513' },
+                { x: 700, y: 220, width: 120, height: 15, color: '#8B4513' }
+            );
+
+            enemies.length = 0;
+            lastPlatform = { x: 0, y: groundY - 30, width: 300, height: 15 };
+            lastGroundEnemyX = 400;
+        }
+
         document.addEventListener('keydown', (e) => {
             if (e.key === 'ArrowLeft') keys.left = true;
             if (e.key === 'ArrowRight') keys.right = true;
             if (e.key === ' ' || e.code === 'Space') {
                 e.preventDefault();
-                keys.space = true;
+                if (gameOver) {
+                    restartGame();
+                } else {
+                    keys.space = true;
+                }
             }
         });
 
@@ -140,6 +167,25 @@
                     color: '#654321'
                 });
             }
+        }
+
+        function generateGroundEnemy() {
+            const minGap = 200;
+            const maxGap = 400;
+            const gap = minGap + Math.random() * (maxGap - minGap);
+
+            const enemySize = 25;
+            const x = lastGroundEnemyX + gap;
+
+            enemies.push({
+                x: x,
+                y: groundY - enemySize,
+                width: enemySize,
+                height: enemySize,
+                color: '#654321'
+            });
+
+            lastGroundEnemyX = x;
         }
 
         function checkEnemyCollision(enemy) {
@@ -233,6 +279,10 @@
                 generatePlatform();
             }
 
+            while (lastGroundEnemyX < cameraX + canvas.width + 200) {
+                generateGroundEnemy();
+            }
+
             platforms.forEach((platform, index) => {
                 if (platform.x + platform.width < cameraX - 100) {
                     platforms.splice(index, 1);
@@ -319,7 +369,7 @@
             ctx.fillText('Distance: ' + distance, canvas.width / 2, canvas.height / 2 + 20);
 
             ctx.font = '18px Arial';
-            ctx.fillText('Refresh to play again', canvas.width / 2, canvas.height / 2 + 60);
+            ctx.fillText('Press SPACE to play again', canvas.width / 2, canvas.height / 2 + 60);
 
             ctx.textAlign = 'left';
         }
