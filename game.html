@@ -39,7 +39,7 @@
         <div id="instructions">
             <h3>Controls:</h3>
             <p>← → Arrow Keys to Move | Space Bar to Jump</p>
-            <p>The screen auto-scrolls! Jump across platforms and see how far you can go!</p>
+            <p>Jump on enemies to defeat them! Running into them will end the game.</p>
         </div>
     </div>
 
@@ -66,12 +66,15 @@
         let cameraX = 0;
         let distance = 0;
         let lastPlatform = { x: 0, y: groundY - 30, width: 300, height: 15 };
+        let gameOver = false;
 
         const platforms = [
             { x: 300, y: 280, width: 120, height: 15, color: '#8B4513' },
             { x: 500, y: 250, width: 100, height: 15, color: '#8B4513' },
             { x: 700, y: 220, width: 120, height: 15, color: '#8B4513' }
         ];
+
+        const enemies = [];
 
         const keys = {
             left: false,
@@ -125,6 +128,35 @@
 
             platforms.push(newPlatform);
             lastPlatform = newPlatform;
+
+            if (Math.random() < 0.4 && newPlatform.width > 60) {
+                const enemySize = 25;
+                const enemyX = newPlatform.x + Math.random() * (newPlatform.width - enemySize);
+                enemies.push({
+                    x: enemyX,
+                    y: newPlatform.y - enemySize,
+                    width: enemySize,
+                    height: enemySize,
+                    color: '#654321'
+                });
+            }
+        }
+
+        function checkEnemyCollision(enemy) {
+            const playerWorldX = player.x + cameraX;
+            return playerWorldX < enemy.x + enemy.width &&
+                   playerWorldX + player.width > enemy.x &&
+                   player.y < enemy.y + enemy.height &&
+                   player.y + player.height > enemy.y;
+        }
+
+        function isJumpingOnEnemy(enemy) {
+            const playerWorldX = player.x + cameraX;
+            return playerWorldX < enemy.x + enemy.width &&
+                   playerWorldX + player.width > enemy.x &&
+                   player.y + player.height >= enemy.y &&
+                   player.y + player.height <= enemy.y + 10 &&
+                   player.velocityY > 0;
         }
 
         function checkPlatformCollision(platform) {
@@ -137,6 +169,8 @@
         }
 
         function update() {
+            if (gameOver) return;
+
             cameraX += scrollSpeed;
             distance = Math.floor(cameraX / 10);
 
@@ -174,11 +208,25 @@
                 player.isJumping = false;
             }
 
+            for (let i = enemies.length - 1; i >= 0; i--) {
+                const enemy = enemies[i];
+                if (isJumpingOnEnemy(enemy)) {
+                    enemies.splice(i, 1);
+                    player.velocityY = -8;
+                } else if (checkEnemyCollision(enemy)) {
+                    gameOver = true;
+                }
+            }
+
             if (player.x < 0) {
                 player.x = 0;
             }
             if (player.x > canvas.width - player.width) {
                 player.x = canvas.width - player.width;
+            }
+
+            if (player.y > canvas.height) {
+                gameOver = true;
             }
 
             while (lastPlatform.x + lastPlatform.width < cameraX + canvas.width + 200) {
@@ -188,6 +236,12 @@
             platforms.forEach((platform, index) => {
                 if (platform.x + platform.width < cameraX - 100) {
                     platforms.splice(index, 1);
+                }
+            });
+
+            enemies.forEach((enemy, index) => {
+                if (enemy.x + enemy.width < cameraX - 100) {
+                    enemies.splice(index, 1);
                 }
             });
         }
@@ -223,10 +277,51 @@
             ctx.fillRect(player.x + 17, player.y + 8, 5, 5);
         }
 
+        function drawEnemies() {
+            for (let enemy of enemies) {
+                const screenX = enemy.x - cameraX;
+
+                if (screenX + enemy.width > 0 && screenX < canvas.width) {
+                    ctx.fillStyle = enemy.color;
+                    ctx.fillRect(screenX, enemy.y, enemy.width, enemy.height);
+
+                    ctx.fillStyle = '#FF0000';
+                    ctx.fillRect(screenX + 6, enemy.y + 8, 4, 4);
+                    ctx.fillRect(screenX + 15, enemy.y + 8, 4, 4);
+
+                    ctx.strokeStyle = '#FF0000';
+                    ctx.lineWidth = 2;
+                    ctx.beginPath();
+                    ctx.moveTo(screenX + 7, enemy.y + 18);
+                    ctx.lineTo(screenX + 12, enemy.y + 16);
+                    ctx.lineTo(screenX + 18, enemy.y + 18);
+                    ctx.stroke();
+                }
+            }
+        }
+
         function drawDistance() {
             ctx.fillStyle = '#000';
             ctx.font = 'bold 20px Arial';
             ctx.fillText('Distance: ' + distance, 10, 30);
+        }
+
+        function drawGameOver() {
+            ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            ctx.fillStyle = '#FFF';
+            ctx.font = 'bold 40px Arial';
+            ctx.textAlign = 'center';
+            ctx.fillText('GAME OVER', canvas.width / 2, canvas.height / 2 - 20);
+
+            ctx.font = 'bold 24px Arial';
+            ctx.fillText('Distance: ' + distance, canvas.width / 2, canvas.height / 2 + 20);
+
+            ctx.font = '18px Arial';
+            ctx.fillText('Refresh to play again', canvas.width / 2, canvas.height / 2 + 60);
+
+            ctx.textAlign = 'left';
         }
 
         function draw() {
@@ -234,8 +329,13 @@
 
             drawGround();
             drawPlatforms();
+            drawEnemies();
             drawPlayer();
             drawDistance();
+
+            if (gameOver) {
+                drawGameOver();
+            }
         }
 
         function gameLoop() {
