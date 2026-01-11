@@ -39,6 +39,7 @@
         <div id="instructions">
             <h3>Controls:</h3>
             <p>← → Arrow Keys to Move | Space Bar to Jump</p>
+            <p>The screen auto-scrolls! Jump across platforms and see how far you can go!</p>
         </div>
     </div>
 
@@ -47,7 +48,7 @@
         const ctx = canvas.getContext('2d');
 
         const player = {
-            x: 100,
+            x: 150,
             y: 250,
             width: 30,
             height: 30,
@@ -61,6 +62,16 @@
 
         const gravity = 0.5;
         const groundY = canvas.height - 50;
+        const scrollSpeed = 3;
+        let cameraX = 0;
+        let distance = 0;
+        let lastPlatform = { x: 0, y: groundY - 30, width: 300, height: 15 };
+
+        const platforms = [
+            { x: 300, y: 280, width: 120, height: 15, color: '#8B4513' },
+            { x: 500, y: 250, width: 100, height: 15, color: '#8B4513' },
+            { x: 700, y: 220, width: 120, height: 15, color: '#8B4513' }
+        ];
 
         const keys = {
             left: false,
@@ -83,7 +94,52 @@
             if (e.key === ' ' || e.code === 'Space') keys.space = false;
         });
 
+        function generatePlatform() {
+            const minGap = 80;
+            const maxGap = 180;
+            const gap = minGap + Math.random() * (maxGap - minGap);
+
+            const minWidth = 80;
+            const maxWidth = 150;
+            const width = minWidth + Math.random() * (maxWidth - minWidth);
+
+            const maxHeightDiff = 80;
+            const minHeightDiff = -100;
+            const heightDiff = minHeightDiff + Math.random() * (maxHeightDiff - minHeightDiff);
+
+            let y = lastPlatform.y + heightDiff;
+
+            const minY = 80;
+            const maxY = groundY - 50;
+            y = Math.max(minY, Math.min(maxY, y));
+
+            const x = lastPlatform.x + lastPlatform.width + gap;
+
+            const newPlatform = {
+                x: x,
+                y: y,
+                width: width,
+                height: 15,
+                color: '#8B4513'
+            };
+
+            platforms.push(newPlatform);
+            lastPlatform = newPlatform;
+        }
+
+        function checkPlatformCollision(platform) {
+            const playerWorldX = player.x + cameraX;
+            return playerWorldX < platform.x + platform.width &&
+                   playerWorldX + player.width > platform.x &&
+                   player.y + player.height >= platform.y &&
+                   player.y + player.height <= platform.y + platform.height &&
+                   player.velocityY >= 0;
+        }
+
         function update() {
+            cameraX += scrollSpeed;
+            distance = Math.floor(cameraX / 10);
+
             if (keys.left) {
                 player.velocityX = -player.speed;
             } else if (keys.right) {
@@ -101,6 +157,17 @@
             player.y += player.velocityY;
             player.x += player.velocityX;
 
+            let onPlatform = false;
+            for (let platform of platforms) {
+                if (checkPlatformCollision(platform)) {
+                    player.y = platform.y - player.height;
+                    player.velocityY = 0;
+                    player.isJumping = false;
+                    onPlatform = true;
+                    break;
+                }
+            }
+
             if (player.y + player.height >= groundY) {
                 player.y = groundY - player.height;
                 player.velocityY = 0;
@@ -110,9 +177,19 @@
             if (player.x < 0) {
                 player.x = 0;
             }
-            if (player.x + player.width > canvas.width) {
+            if (player.x > canvas.width - player.width) {
                 player.x = canvas.width - player.width;
             }
+
+            while (lastPlatform.x + lastPlatform.width < cameraX + canvas.width + 200) {
+                generatePlatform();
+            }
+
+            platforms.forEach((platform, index) => {
+                if (platform.x + platform.width < cameraX - 100) {
+                    platforms.splice(index, 1);
+                }
+            });
         }
 
         function drawGround() {
@@ -121,6 +198,20 @@
 
             ctx.fillStyle = '#228B22';
             ctx.fillRect(0, groundY - 10, canvas.width, 10);
+        }
+
+        function drawPlatforms() {
+            for (let platform of platforms) {
+                const screenX = platform.x - cameraX;
+
+                if (screenX + platform.width > 0 && screenX < canvas.width) {
+                    ctx.fillStyle = platform.color;
+                    ctx.fillRect(screenX, platform.y, platform.width, platform.height);
+
+                    ctx.fillStyle = '#654321';
+                    ctx.fillRect(screenX, platform.y, platform.width, 3);
+                }
+            }
         }
 
         function drawPlayer() {
@@ -132,11 +223,19 @@
             ctx.fillRect(player.x + 17, player.y + 8, 5, 5);
         }
 
+        function drawDistance() {
+            ctx.fillStyle = '#000';
+            ctx.font = 'bold 20px Arial';
+            ctx.fillText('Distance: ' + distance, 10, 30);
+        }
+
         function draw() {
             ctx.clearRect(0, 0, canvas.width, canvas.height);
 
             drawGround();
+            drawPlatforms();
             drawPlayer();
+            drawDistance();
         }
 
         function gameLoop() {
