@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Platformer Game</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            background-color: #87CEEB;
+            font-family: Arial, sans-serif;
+        }
+
+        #gameContainer {
+            text-align: center;
+        }
+
+        canvas {
+            border: 3px solid #333;
+            background-color: #87CEEB;
+            display: block;
+            margin: 0 auto;
+        }
+
+        #instructions {
+            margin-top: 20px;
+            color: #333;
+        }
+    </style>
+</head>
+<body>
+    <div id="gameContainer">
+        <canvas id="gameCanvas" width="800" height="400"></canvas>
+        <div id="instructions">
+            <h3>Controls:</h3>
+            <p>← → Arrow Keys to Move | Space Bar to Jump</p>
+        </div>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+
+        const player = {
+            x: 100,
+            y: 250,
+            width: 30,
+            height: 30,
+            velocityY: 0,
+            velocityX: 0,
+            speed: 5,
+            jumpPower: 12,
+            isJumping: false,
+            color: '#FF6347'
+        };
+
+        const gravity = 0.5;
+        const groundY = canvas.height - 50;
+
+        const keys = {
+            left: false,
+            right: false,
+            space: false
+        };
+
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'ArrowLeft') keys.left = true;
+            if (e.key === 'ArrowRight') keys.right = true;
+            if (e.key === ' ' || e.code === 'Space') {
+                e.preventDefault();
+                keys.space = true;
+            }
+        });
+
+        document.addEventListener('keyup', (e) => {
+            if (e.key === 'ArrowLeft') keys.left = false;
+            if (e.key === 'ArrowRight') keys.right = false;
+            if (e.key === ' ' || e.code === 'Space') keys.space = false;
+        });
+
+        function update() {
+            if (keys.left) {
+                player.velocityX = -player.speed;
+            } else if (keys.right) {
+                player.velocityX = player.speed;
+            } else {
+                player.velocityX = 0;
+            }
+
+            if (keys.space && !player.isJumping) {
+                player.velocityY = -player.jumpPower;
+                player.isJumping = true;
+            }
+
+            player.velocityY += gravity;
+            player.y += player.velocityY;
+            player.x += player.velocityX;
+
+            if (player.y + player.height >= groundY) {
+                player.y = groundY - player.height;
+                player.velocityY = 0;
+                player.isJumping = false;
+            }
+
+            if (player.x < 0) {
+                player.x = 0;
+            }
+            if (player.x + player.width > canvas.width) {
+                player.x = canvas.width - player.width;
+            }
+        }
+
+        function drawGround() {
+            ctx.fillStyle = '#8B4513';
+            ctx.fillRect(0, groundY, canvas.width, canvas.height - groundY);
+
+            ctx.fillStyle = '#228B22';
+            ctx.fillRect(0, groundY - 10, canvas.width, 10);
+        }
+
+        function drawPlayer() {
+            ctx.fillStyle = player.color;
+            ctx.fillRect(player.x, player.y, player.width, player.height);
+
+            ctx.fillStyle = '#000';
+            ctx.fillRect(player.x + 8, player.y + 8, 5, 5);
+            ctx.fillRect(player.x + 17, player.y + 8, 5, 5);
+        }
+
+        function draw() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            drawGround();
+            drawPlayer();
+        }
+
+        function gameLoop() {
+            update();
+            draw();
+            requestAnimationFrame(gameLoop);
+        }
+
+        gameLoop();
+    </script>
+</body>
+</html>
